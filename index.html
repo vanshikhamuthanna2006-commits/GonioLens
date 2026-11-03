@@ -1,0 +1,926 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GonioLens</title>
+<meta name="description" content="GonioLens: a camera goniometer. Knee flexion from three coloured stickers, live, from a photo or from a video. Built for the ArthroKNEE project.">
+<meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5fb" media="(prefers-color-scheme: light)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GonioLens">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{
+  --bg:#0b1020; --surface:#131a2e; --surface-2:#1b2342; --line:#29335a; --ink:#eef1ff; --ink-2:#b8bfdd; --muted:#8089ad;
+  --accent:#7c5cff; --accent-2:#22d3ee; --accent-ink:#ffffff; --angle:#ffc24b;
+  --ok:#3ddc97; --ok-soft:rgba(61,220,151,.15); --bad:#ff6b7a; --bad-soft:rgba(255,107,122,.15); --warn:#ffc24b; --warn-soft:rgba(255,194,75,.15);
+  --stage:#05070f; --shadow:0 10px 30px rgba(0,0,0,.35);
+  --grad:linear-gradient(135deg,#4b2bd6 0%,#7c5cff 45%,#14b4d4 100%);
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
+  --navh:64px; color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --bg:#f4f5fb; --surface:#ffffff; --surface-2:#eef0fa; --line:#dde1f0; --ink:#141a33; --ink-2:#47506f; --muted:#737b99;
+  --accent:#5b3df5; --accent-2:#0e9fbf; --angle:#b86e00; --ok:#11875a; --ok-soft:#e2f6ec; --bad:#c62f45; --bad-soft:#fdebee; --warn:#9a6200; --warn-soft:#fff3d9;
+  --stage:#0b1020; --shadow:0 8px 24px rgba(20,26,51,.10); color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#f4f5fb; --surface:#ffffff; --surface-2:#eef0fa; --line:#dde1f0; --ink:#141a33; --ink-2:#47506f; --muted:#737b99;
+  --accent:#5b3df5; --accent-2:#0e9fbf; --angle:#b86e00; --ok:#11875a; --ok-soft:#e2f6ec; --bad:#c62f45; --bad-soft:#fdebee; --warn:#9a6200; --warn-soft:#fff3d9;
+  --stage:#0b1020; --shadow:0 8px 24px rgba(20,26,51,.10); color-scheme:light}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--font);-webkit-text-size-adjust:100%;
+  padding:env(safe-area-inset-top,0px) max(14px,env(safe-area-inset-right,0px)) calc(var(--navh) + 24px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1180px;margin:0 auto}
+/* header */
+header.top{display:flex;align-items:center;gap:12px;padding:14px 0 10px}
+header.top img{width:40px;height:40px;border-radius:11px;box-shadow:var(--shadow);flex:0 0 auto}
+.brand{min-width:0;flex:1}
+.brand h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.brand h1 span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand .sub{font-size:12px;color:var(--muted)}
+.hbtns{display:flex;gap:6px;align-items:center}
+/* nav: top segmented on wide screens, bottom bar on phones */
+nav.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;margin:6px 0 14px}
+nav.tabs button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;border:0;background:transparent;color:var(--ink-2);
+  font:600 14px var(--font);padding:9px 8px;border-radius:10px;cursor:pointer;min-height:42px}
+nav.tabs button svg{width:20px;height:20px;flex:0 0 auto}
+nav.tabs button[aria-selected="true"]{background:var(--grad);color:#fff;box-shadow:0 4px 14px rgba(91,61,245,.35)}
+@media (max-width:760px){
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;margin:0;border-radius:18px 18px 0 0;border-width:1px 0 0;z-index:40;
+    padding:6px max(6px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));
+    background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  nav.tabs button{flex-direction:column;gap:2px;font-size:11px;padding:6px 2px;min-height:52px}
+}
+/* layout */
+.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,1fr);gap:16px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;min-width:0;box-shadow:var(--shadow)}
+.panel + .panel{margin-top:16px}
+.grid > .panel + .panel{margin-top:0}
+h2{font-size:19px;font-weight:750;margin:0 0 10px;letter-spacing:-.01em}
+h3{font-size:14px;margin:16px 0 8px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em}
+p{margin:0 0 10px}
+.hint{font-size:13px;color:var(--muted)}
+/* readout */
+.readout{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.readout .val{font-weight:800;font-size:clamp(58px,15vw,96px);line-height:.85;font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:var(--angle)}
+.readout .unit{font-size:clamp(34px,7vw,48px);font-weight:800;color:var(--angle);margin-left:-10px;align-self:flex-start;line-height:1}
+.readout .meta{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);line-height:1.55;min-width:0}
+/* stage */
+.stage{position:relative;background:var(--stage);border-radius:14px;overflow:hidden;touch-action:none;min-height:200px;display:flex;align-items:center;justify-content:center}
+.stage > canvas{display:block;max-width:100%;max-height:min(68vh,760px);width:auto;height:auto}
+.empty{color:#9aa3c7;font-size:14px;padding:44px 18px;text-align:center;max-width:44ch}
+.empty b{color:#dfe3ff}
+.cam{position:relative;max-width:100%;margin:0 auto;background:#000}
+.cam video,.cam canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.cam canvas{touch-action:none}
+/* controls */
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{font:650 14px var(--font);padding:10px 14px;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;user-select:none;-webkit-user-select:none}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--grad);border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(91,61,245,.3)}
+.btn.danger{color:var(--bad)}
+.btn.small{min-height:34px;padding:6px 10px;font-size:13px;border-radius:9px}
+.btn:disabled{opacity:.4;cursor:default;box-shadow:none}
+.btn input[type=file]{display:none}
+.btn svg{width:18px;height:18px}
+button:focus-visible,.btn:focus-within,input:focus-visible,select:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+.icon-btn{width:42px;height:42px;padding:0;border-radius:12px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--ink-2);min-width:0}
+input,select{font:16px var(--font);padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-width:0;width:100%;min-height:42px}
+.inline{flex-direction:row !important;align-items:center;gap:8px !important}
+.inline select{width:auto}
+.form{display:grid;grid-template-columns:1.3fr .7fr;gap:8px}
+.form .wide,.form .pose{grid-column:1/-1}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.bad{background:var(--bad-soft);color:var(--bad)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.swatch{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.7);display:inline-block;flex:0 0 auto;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+.msgs{margin:10px 0 0;padding:0;list-style:none;font-size:13.5px}
+.msgs li{padding:8px 12px;border-radius:10px;margin-bottom:6px;background:var(--surface-2)}
+.msgs li.bad{background:var(--bad-soft);color:var(--bad)}
+.msgs li.ok{background:var(--ok-soft);color:var(--ok)}
+.msgs li.warn{background:var(--warn-soft);color:var(--warn)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:700}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+tr.sel{background:var(--surface-2)}
+.progress{height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin:8px 0}
+.progress i{display:block;height:100%;width:0;background:var(--grad)}
+canvas.chart{width:100%;height:200px;display:block;background:var(--bg);border-radius:12px;cursor:crosshair;border:1px solid var(--line)}
+.steps{padding-left:20px;margin:6px 0}
+.steps li{margin-bottom:7px}
+code{font-family:var(--mono);font-size:.88em;background:var(--surface-2);padding:1px 6px;border-radius:6px}
+.toast{position:fixed;left:50%;bottom:calc(var(--navh) + 24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:10px 18px;border-radius:12px;font-size:14px;font-weight:600;z-index:60;max-width:calc(100% - 32px);box-shadow:var(--shadow);text-align:center}
+@media (min-width:761px){.toast{bottom:24px}}
+.stab{height:10px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin:4px 0 10px}
+.stab i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff6b7a,#ffc24b 45%,#3ddc97);transition:width .12s}
+textarea{width:100%;min-height:120px;font:12px var(--mono);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+.guide{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;background:var(--surface-2);border-radius:14px;padding:10px 12px;margin-bottom:10px}
+.guide .num{flex:0 0 auto;width:40px;height:40px;border-radius:12px;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:800;font-size:20px}
+.guide .txt{flex:1;min-width:0;font-weight:650;line-height:1.3}
+.guide .txt small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.dots{display:flex;gap:6px}
+@media (max-width:520px){.guide .dots{width:100%;justify-content:space-between}.dots button{width:38px;height:38px}}
+@media (max-width:600px){.hide-sm{display:none}}
+.dots button{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);background:transparent;color:var(--ink-2);font:700 12px var(--font);cursor:pointer;padding:0}
+.dots button.done{background:var(--ok);border-color:var(--ok);color:#06231a}
+.dots button.cur{border-color:var(--accent-2);color:var(--ink)}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:12px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;color:var(--ink-2);font:650 13px var(--font);padding:8px 12px;border-radius:9px;cursor:pointer;min-height:38px}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.jrow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;margin:4px 0;width:100%}
+.legsvg{width:100%;max-width:340px;display:block;margin:0 auto 6px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px}
+.kv dt{color:var(--muted)} .kv dd{margin:0}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <img src="icon-192.png" alt="" width="40" height="40">
+  <div class="brand"><h1><span>GonioLens</span></h1><div class="sub">camera goniometer · ArthroKNEE</div></div>
+  <div class="hbtns">
+    <span class="chip" id="storeChip" hidden></span>
+    <button class="btn small primary" id="installBtn" hidden>Install</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Modes">
+  <button role="tab" data-tab="live" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span>Live</span></button>
+  <button role="tab" data-tab="photo" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Photo</span></button>
+  <button role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M10 8l6 4-6 4V8z"/></svg><span>Video</span></button>
+  <button role="tab" data-tab="check" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M6 20L18 6"/><path d="M11 20a6 6 0 0 0-1.5-4"/></svg><span>Accuracy</span></button>
+  <button role="tab" data-tab="records" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Records</span></button>
+  <button role="tab" data-tab="setup" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Setup</span></button>
+</nav>
+
+<!-- ============ LIVE ============ -->
+<section data-pane="live">
+  <div class="grid">
+    <div class="panel">
+      <div class="guide" id="lGuide">
+        <div class="num" id="lGNum">0</div>
+        <div class="txt" id="lGTxt">Standing, leg straight<small>auto-capture saves this pose when the leg is still</small></div>
+        <div class="dots" id="lDots"></div>
+      </div>
+      <div class="readout"><span class="val" id="lVal">--.-</span><span class="unit">°</span><span class="meta" id="lMeta">Tap Start camera</span></div>
+      <div class="stab" title="steadiness"><i id="lStab"></i></div>
+      <div class="stage" id="lStage">
+        <div class="empty" id="lEmpty"><b>Point the phone side-on at the leg.</b><br>Tripod, or prop the phone on a chair, 2–3 m away at knee height. Then tap <b>Start camera</b> and allow camera access.</div>
+        <div class="cam" id="lCam" hidden><video id="lVideo" playsinline muted autoplay></video><canvas id="lOver"></canvas></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="lStart">Start camera</button>
+        <button class="btn" id="lFlip" disabled>Switch camera</button>
+        <button class="btn" id="lStopCam" disabled>Stop</button>
+        <button class="btn" id="lCap" disabled>Capture now</button>
+        <button class="btn" id="lSwap" disabled hidden>Wrong knee? Swap</button>
+      </div>
+      <label class="f inline" style="font-size:14px"><input type="checkbox" id="lAuto" style="width:22px;height:22px;min-height:0" checked> Auto-capture each pose when the leg is held still</label>
+      <ul class="msgs" id="lMsgs"></ul>
+    </div>
+    <div class="panel">
+      <h2>Session</h2>
+      <div class="form" id="lForm"></div>
+      <p class="hint" style="margin-top:10px">A capture saves the median of the last 0.5 s. Auto-capture saves each pose once the angle is steady (SD under 0.4°), moves to the next pose, waits for the leg to move, and turns itself off after pose 3.</p>
+      <h3>Stickers</h3>
+      <div id="colorRowL"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PHOTO ============ -->
+<section data-pane="photo" hidden>
+  <div class="grid">
+    <div class="panel">
+      <div class="readout"><span class="val" id="pVal">--.-</span><span class="unit">°</span><span class="meta" id="pMeta">Take or choose a side-on photo with the three stickers visible.</span></div>
+      <div class="stage" id="pStage"><div class="empty">Photo appears here. Drag any point to fine-tune it; a magnifier appears while you drag.</div><canvas id="pCanvas" hidden></canvas></div>
+      <div class="row">
+        <label class="btn primary">Take photo<input type="file" accept="image/*" capture="environment" id="pCam"></label>
+        <label class="btn">Choose photo<input type="file" accept="image/*" id="pFile"></label>
+        <button class="btn" id="pRedetect" disabled>Re-detect</button>
+        <button class="btn" id="pSwap" disabled hidden>Wrong knee? Swap</button>
+        <button class="btn" id="pManual" disabled>Place points by hand</button>
+      </div>
+      <ul class="msgs" id="pMsgs"></ul>
+    </div>
+    <div class="panel">
+      <h2>Save this reading</h2>
+      <div class="form" id="pForm"></div>
+      <div class="row"><button class="btn primary" id="pSave" disabled style="width:100%">Save reading</button></div>
+      <h3>Stickers</h3>
+      <div id="colorRowP"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VIDEO ============ -->
+<section data-pane="video" hidden>
+  <div class="grid">
+    <div class="panel">
+      <div class="readout"><span class="val" id="vVal">--.-</span><span class="unit">°</span><span class="meta" id="vMeta">Record or choose a side-on video. Every frame is measured; steady holds are found automatically.</span></div>
+      <div class="stage" id="vStage"><div class="empty">Video frame appears here. Start each video with the leg straight.</div><canvas id="vCanvas" hidden></canvas></div>
+      <div class="row">
+        <label class="btn primary">Record video<input type="file" accept="video/*" capture="environment" id="vCam"></label>
+        <label class="btn">Choose video<input type="file" accept="video/*" id="vFile"></label>
+        <label class="f inline">Analyse
+          <select id="vRate"><option value="30">30 frames/s</option><option value="15" selected>15 frames/s</option><option value="10">10 frames/s</option></select></label>
+        <button class="btn" id="vSwap" disabled hidden>Wrong knee? Swap</button>
+        <button class="btn primary" id="vRun" disabled>Analyse video</button>
+        <button class="btn danger" id="vStop" hidden>Stop</button>
+      </div>
+      <div class="progress" id="vProg" hidden><i></i></div>
+      <canvas class="chart" id="vChart" hidden aria-label="Knee angle over time"></canvas>
+      <ul class="msgs" id="vMsgs"></ul>
+      <video id="vVideo" playsinline muted preload="auto" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video>
+    </div>
+    <div class="panel">
+      <h2>Steady holds</h2>
+      <p class="hint">A hold is when the angle stays within ±1.5° for at least 0.8 s. Tap a row to see that frame, check the pose of each hold, then save.</p>
+      <div class="form" id="vForm"></div>
+      <div class="tbl" style="margin-top:10px"><table><thead><tr><th>#</th><th>Time (s)</th><th>Angle</th><th>SD</th><th>Pose</th></tr></thead><tbody id="vHolds"><tr><td colspan="5" style="color:var(--muted)">No video analysed yet.</td></tr></tbody></table></div>
+      <div class="row"><button class="btn primary" id="vSaveAll" disabled>Save holds with a pose</button><button class="btn" id="vSeries" disabled>Export angle-vs-time CSV</button></div>
+      <h3>Stickers</h3>
+      <div id="colorRowV"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ACCURACY CHECK ============ -->
+<section data-pane="check" hidden>
+  <div class="grid">
+    <div class="panel">
+      <h2>Measure the app's own error</h2>
+      <p class="hint">Download and print the cards, stick them flat on a wall, and photograph each one the way you will film volunteers. Add a few deliberately imperfect shots (phone rotated, a step to the side, closer, further). The results table gives bias, MAE and worst error for your report.</p>
+      <div class="row" id="cardRow"></div>
+      <div class="readout" style="margin-top:6px"><span class="val" id="cVal">--.-</span><span class="unit">°</span><span class="meta" id="cMeta">Photograph a card.</span></div>
+      <div class="stage" id="cStage"><div class="empty">Card photo appears here.</div><canvas id="cCanvas" hidden></canvas></div>
+      <div class="row">
+        <label class="btn primary">Photograph card<input type="file" accept="image/*" capture="environment" id="cCam"></label>
+        <label class="btn">Choose photo<input type="file" accept="image/*" id="cFile"></label>
+        <label class="f inline">True angle <select id="cTrue"><option>0</option><option>30</option><option>60</option><option selected>90</option><option>120</option></select></label>
+        <label class="f inline">Condition <select id="cCond"><option>side-on, centred</option><option>phone rotated</option><option>~10° off-axis</option><option>~20° off-axis</option><option>close (1 m)</option><option>far (3 m)</option><option>marker near frame edge</option></select></label>
+        <button class="btn" id="cSwap" disabled hidden>Wrong knee? Swap</button>
+        <button class="btn primary" id="cSave" disabled>Save check</button>
+      </div>
+      <ul class="msgs" id="cMsgs"></ul>
+    </div>
+    <div class="panel">
+      <h2>Results</h2>
+      <div class="tbl"><table><thead><tr><th>Condition</th><th>n</th><th>Bias</th><th>MAE</th><th>Max</th></tr></thead><tbody id="cSummary"></tbody></table></div>
+      <h3>All checks</h3>
+      <div class="tbl"><table><thead><tr><th>True</th><th>Measured</th><th>Error</th><th>Condition</th><th></th></tr></thead><tbody id="cList"></tbody></table></div>
+      <div class="row"><button class="btn" id="cExport">Export checks CSV</button></div>
+      <h3>Stickers</h3>
+      <div id="colorRowC"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RECORDS ============ -->
+<section data-pane="records" hidden>
+  <div class="panel">
+    <div class="row" style="justify-content:space-between;margin-top:0">
+      <h2 style="margin:0">Saved readings</h2>
+      <label class="f inline">Subject <select id="rFilter"><option value="">all</option></select></label>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="rRef">Export reference_angles.csv</button>
+      <button class="btn" id="rFull">Export full log</button>
+      <button class="btn" id="rBackup">Back up</button>
+      <label class="btn">Restore backup<input type="file" accept=".json,application/json" id="rRestore"></label>
+    </div>
+    <p class="hint">reference_angles.csv is the file <code>tools/analysis.py</code> reads from <code>data\</code>. Repeated readings of the same subject · trial · pose are averaged; rows marked <span class="chip warn">×2</span> have duplicates, so delete the bad one before exporting.</p>
+    <div class="tbl"><table><thead><tr><th>Subject</th><th>Trial</th><th>Pose</th><th>Angle</th><th class="hide-sm">SD</th><th class="hide-sm">Source</th><th class="hide-sm">Points</th><th class="hide-sm">Time</th><th></th></tr></thead><tbody id="rList"></tbody></table></div>
+    <div id="rCopy" hidden><h3>Copy this text into a file</h3><textarea id="rText" readonly></textarea></div>
+  </div>
+</section>
+
+<!-- ============ SETUP ============ -->
+<section data-pane="setup" hidden>
+  <div class="two">
+    <div class="panel">
+      <h2>Settings</h2>
+      <h3 style="margin-top:4px">Sticker colours</h3>
+      <div id="colorRowS"></div>
+      <h3>Which way do the toes point on screen?</h3>
+      <div class="seg" id="toesSeg"><button data-v="left">← Left</button><button data-v="right">Right →</button></div>
+      <p class="hint" style="margin-top:8px">This gives the angle its sign: bending is positive, over-straightening (hyperextension) is negative. Filming the right leg from its outer side with the back camera, the toes point <b>right</b>. If bending shows a negative number, flip this.</p>
+      <h3>Sound on capture</h3>
+      <div class="seg" id="soundSeg"><button data-v="on">On</button><button data-v="off">Off</button></div>
+      <h3>Theme</h3>
+      <div class="seg" id="themeSeg"><button data-v="auto">Auto</button><button data-v="dark">Dark</button><button data-v="light">Light</button></div>
+      <h3>Install on the phone</h3>
+      <ol class="steps">
+        <li><b>Android (Chrome):</b> tap <b>Install</b> at the top, or menu ⋮ → <b>Install app</b>.</li>
+        <li><b>iPhone (Safari):</b> Share → <b>Add to Home Screen</b>.</li>
+        <li><b>Laptop (Chrome / Edge):</b> the install icon in the address bar.</li>
+        <li>Open it from the new icon. It works offline. Readings stay on this device, so export from Records after every volunteer.</li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h2>Stickers on the leg</h2>
+      <svg class="legsvg" viewBox="0 0 320 330" role="img" aria-label="Sticker positions on the right leg, side view">
+        <path d="M108,20 C104,90 110,150 120,190 C124,206 122,224 120,238 C112,286 118,304 124,316 L196,318 L172,306 C166,286 162,250 168,226 C176,206 178,186 172,170 C182,120 190,60 192,20 Z" fill="#e3b892" stroke="#b7865f" stroke-width="2"/>
+        <line x1="146" y1="40" x2="146" y2="196" stroke="#ffc24b" stroke-width="3" stroke-dasharray="6 5"/>
+        <line x1="146" y1="196" x2="146" y2="300" stroke="#ffc24b" stroke-width="3" stroke-dasharray="6 5"/>
+        <circle cx="146" cy="40" r="11" fill="#2f7bff" stroke="#fff" stroke-width="3"/>
+        <circle cx="146" cy="196" r="11" fill="#ff3d9a" stroke="#fff" stroke-width="3"/>
+        <circle cx="146" cy="300" r="11" fill="#16c172" stroke="#fff" stroke-width="3"/>
+        <text x="166" y="44" font-size="12.5" fill="currentColor" font-family="sans-serif">HIP · greater trochanter</text>
+        <text x="166" y="194" font-size="12.5" fill="currentColor" font-family="sans-serif">KNEE · lateral epicondyle</text>
+        <text x="166" y="210" font-size="11" fill="currentColor" opacity=".7" font-family="sans-serif">1–2 cm above joint line, on skin</text>
+        <text x="166" y="304" font-size="12.5" fill="currentColor" font-family="sans-serif">ANKLE · lateral malleolus</text>
+      </svg>
+      <ol class="steps">
+        <li><b>Three colours (recommended):</b> blue hip, pink knee, green ankle, round <b>matt</b> stickers, 2–3 cm. Each colour names its joint, so they can never be mixed up.</li>
+        <li><b>Hip:</b> the bony bump on the side of the hip; ask the volunteer to roll the leg in and out and feel it move.</li>
+        <li><b>Knee:</b> the bony bump on the outer knee, 1–2 cm above the joint line, <b>on skin</b> through the 2 cm hole in the knee cap.</li>
+        <li><b>Ankle:</b> the outer ankle bone.</li>
+        <li>No clothing or background in any sticker colour. These are the standard clinical goniometry landmarks (Norkin &amp; White).</li>
+      </ol>
+      <h2 style="margin-top:16px">Camera</h2>
+      <ol class="steps">
+        <li><b>Side-on</b>, square to the plane the knee bends in. This is the only placement rule that changes accuracy.</li>
+        <li><b>2–3 m away</b>, phone at knee height, leg in the <b>middle</b> and filling most of the picture height.</li>
+        <li><b>1× zoom</b>, even light, plain background. Phone rotation, height and distance do not change the angle.</li>
+      </ol>
+      <h2 style="margin-top:16px">What this measures</h2>
+      <p class="hint">2D marker-based video goniometry in the sagittal plane: the angle at the knee sticker between the lines to the hip and ankle stickers. Validated only with printed cards (Accuracy tab), not certified as a medical device. Photos and video stay on this device; only the numbers you save are kept.</p>
+      <p class="hint" id="verLine"></p>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+(function(){
+"use strict";
+const APP_VERSION='gl-1.0';
+/* ================================================================ utilities */
+const $=id=>document.getElementById(id);
+let toastTimer=null;
+function toast(t){ let d=$('toastEl'); if(!d){ d=document.createElement('div'); d.id='toastEl'; d.className='toast'; d.setAttribute('role','status'); document.body.appendChild(d); }
+  d.textContent=t; d.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ d.hidden=true; },2400); }
+const fmt=(x,n=1)=>(x==null||!isFinite(x))?'--':x.toFixed(n);
+function median(a){ const s=[...a].sort((x,y)=>x-y); const m=s.length>>1; return s.length?(s.length%2?s[m]:(s[m-1]+s[m])/2):NaN; }
+function sd(a){ if(a.length<2) return 0; let m=0; for(const v of a) m+=v; m/=a.length; let q=0; for(const v of a) q+=(v-m)*(v-m); return Math.sqrt(q/(a.length-1)); }
+function lsGet(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){ toast('Storage is full or blocked: export your records now.'); } }
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ================================================================ settings (same storage keys as v4, so old readings are kept) */
+const PRESETS=[
+  {name:'green', h:135, tol:28, smin:0.40, vmin:0.30, css:'#16c172'},
+  {name:'pink',  h:330, tol:22, smin:0.40, vmin:0.40, css:'#ff3d9a'},
+  {name:'orange',h:22,  tol:14, smin:0.55, vmin:0.45, css:'#ff7a1a'},
+  {name:'blue',  h:215, tol:20, smin:0.45, vmin:0.30, css:'#2f7bff'},
+];
+let target=lsGet('akg_color',{...PRESETS[0]});
+let mode=lsGet('akg_mode','three');
+let targets3=lsGet('akg_colors3',{hip:{...PRESETS[3]},knee:{...PRESETS[1]},ankle:{...PRESETS[0]}});
+let toes=lsGet('akg_toes','right');
+let soundOn=lsGet('akg_sound',true);
+let theme=lsGet('akg_theme','auto');
+const JOINTS=['hip','knee','ankle'];
+let picking=false;  // false | 'one' | 'hip' | 'knee' | 'ankle'
+function applyTheme(){ if(theme==='auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme',theme); }
+applyTheme();
+
+function setTarget(t,why){ target={...t}; picking=false; lsSet('akg_color',target); renderColorRows(); if(why) toast(why); }
+function setTarget3(j,t,why){ targets3={...targets3,[j]:{...t}}; picking=false; lsSet('akg_colors3',targets3); renderColorRows(); if(why) toast(why); }
+function setMode(m){ mode=m; picking=false; lsSet('akg_mode',mode); renderColorRows(); updateSwapButtons(); rerunAll(); toast(m==='three'?'Three-colour mode: one colour per joint':'One-colour mode: bigger sticker on the knee'); }
+function applyPicked(c){ if(picking==='one') setTarget(c,'Sticker colour set'); else if(JOINTS.includes(picking)) setTarget3(picking,c,`${picking.toUpperCase()} colour set`); }
+function updateSwapButtons(){ for(const id of ['pSwap','vSwap','lSwap','cSwap']) $(id).hidden= mode==='three'; }
+function renderColorRows(){
+  for(const id of ['colorRowP','colorRowV','colorRowL','colorRowC','colorRowS']){
+    const box=$(id); if(!box) continue; box.textContent='';
+    const seg=document.createElement('div'); seg.className='seg'; seg.style.marginBottom='8px';
+    for(const [m,lab] of [['three','Three colours'],['one','One colour, big knee']]){ const b=document.createElement('button'); b.textContent=lab; b.setAttribute('aria-pressed',String(mode===m)); b.onclick=()=>setMode(m); seg.appendChild(b); }
+    box.appendChild(seg);
+    if(mode==='one'){
+      const line=document.createElement('div'); line.className='jrow';
+      line.innerHTML=`<span class="chip"><span class="swatch" style="background:${esc(target.css)}"></span>all three · ${esc(target.name)}</span>`;
+      const sel=document.createElement('select'); sel.setAttribute('aria-label','sticker colour'); sel.style.width='auto';
+      sel.innerHTML='<option value="">preset…</option>'+PRESETS.map((p,i)=>`<option value="${i}">${p.name}</option>`).join('');
+      sel.onchange=()=>{ if(sel.value!==''){ setTarget(PRESETS[+sel.value]); rerunAll(); } };
+      const pk=document.createElement('button'); pk.className='btn small'; pk.textContent=picking==='one'?'Tap sticker…':'Pick';
+      pk.onclick=()=>{ picking=picking==='one'?false:'one'; renderColorRows(); if(picking) toast('Now tap the middle of a sticker in the picture'); };
+      line.append(sel,pk); box.appendChild(line);
+    } else {
+      for(const j of JOINTS){ const t=targets3[j]; const line=document.createElement('div'); line.className='jrow';
+        line.innerHTML=`<span class="chip"><span class="swatch" style="background:${esc(t.css)}"></span><b>${j.toUpperCase()}</b>&nbsp;${esc(t.name)}</span>`;
+        const sel=document.createElement('select'); sel.setAttribute('aria-label',j+' colour'); sel.style.width='auto';
+        sel.innerHTML='<option value="">preset…</option>'+PRESETS.map((p,i)=>`<option value="${i}">${p.name}</option>`).join('');
+        sel.onchange=()=>{ if(sel.value!==''){ setTarget3(j,PRESETS[+sel.value]); rerunAll(); } };
+        const pk=document.createElement('button'); pk.className='btn small'; pk.textContent=picking===j?'Tap it…':'Pick';
+        pk.onclick=()=>{ picking=picking===j?false:j; renderColorRows(); if(picking) toast(`Now tap the middle of the ${j.toUpperCase()} sticker`); };
+        line.append(sel,pk); box.appendChild(line); }
+      const T=JOINTS.map(j=>targets3[j]); let clash=false;
+      for(let a=0;a<3;a++) for(let b=a+1;b<3;b++){ let dh=Math.abs(T[a].h-T[b].h); if(dh>180) dh=360-dh; if(dh<T[a].tol+T[b].tol) clash=true; }
+      if(clash){ const w=document.createElement('div'); w.className='chip bad'; w.style.whiteSpace='normal'; w.style.marginTop='6px'; w.textContent='Two joints have colours too close to tell apart. Choose three different colours.'; box.appendChild(w); }
+    }
+  }
+}
+function rgb2hsv(r,g,b){ const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn; let h=0;
+  if(d){ if(mx===r) h=((g-b)/d)%6; else if(mx===g) h=(b-r)/d+2; else h=(r-g)/d+4; h*=60; if(h<0) h+=360; }
+  return [h,mx?d/mx:0,mx/255]; }
+function sampleColor(ctx,x,y){
+  const r=4, d=ctx.getImageData(Math.max(0,x-r),Math.max(0,y-r),2*r+1,2*r+1).data; let R=0,G=0,B=0,n=0;
+  for(let i=0;i<d.length;i+=4){ R+=d[i]; G+=d[i+1]; B+=d[i+2]; n++; }
+  R/=n; G/=n; B/=n; const [h,s,v]=rgb2hsv(R,G,B);
+  if(s<0.25||v<0.2) return null;
+  return {name:'picked', h, tol:20, smin:Math.max(0.25,s*0.55), vmin:Math.max(0.18,v*0.45), css:`rgb(${R|0},${G|0},${B|0})`}; }
+
+/* ================================================================ detection
+   Allocation-free colour classification on a downscaled copy, connected components on reused buffers,
+   then each centre is refined at full resolution (sub-pixel centroid). */
+const DET={c:null,ctx:null,n:0,mask:null,lab:null,stack:null};
+function detBuffers(n){ if(n>DET.n){ DET.n=n; DET.mask=new Uint8Array(n); DET.lab=new Int32Array(n); DET.stack=new Int32Array(n); } else DET.lab.fill(0,0,n); }
+function hueOK(r,g,b,t){ let mx=r>g?r:g; if(b>mx) mx=b; let mn=r<g?r:g; if(b<mn) mn=b; const d=mx-mn;
+  if(d===0||mx<t.vmin*255||d<t.smin*mx) return false;
+  let h; if(mx===r) h=((g-b)/d)%6; else if(mx===g) h=(b-r)/d+2; else h=(r-g)/d+4; h*=60; if(h<0) h+=360;
+  let dh=h-t.h; if(dh<0) dh=-dh; if(dh>180) dh=360-dh; return dh<=t.tol; }
+function detect(src,opts={}){
+  const W0=src.width,H0=src.height, work=opts.workWidth||720;
+  const W=Math.max(1,Math.round(W0*Math.min(1,work/W0))), H=Math.max(1,Math.round(H0*Math.min(1,work/W0)));
+  const s2=W/W0;
+  if(!DET.c){ DET.c=document.createElement('canvas'); }
+  if(DET.c.width!==W||DET.c.height!==H){ DET.c.width=W; DET.c.height=H; DET.ctx=null; }
+  if(!DET.ctx) DET.ctx=DET.c.getContext('2d',{willReadFrequently:true});
+  const cx=DET.ctx; cx.imageSmoothingEnabled=true; cx.drawImage(src,0,0,W,H);
+  const three=mode==='three', T=three?JOINTS.map(j=>targets3[j]):[target], nT=T.length;
+  const th=T.map(t=>t.h),tt=T.map(t=>t.tol),ts=T.map(t=>t.smin),tv=T.map(t=>t.vmin*255);
+  let minS=1,minV=255; for(let k=0;k<nT;k++){ if(ts[k]<minS) minS=ts[k]; if(tv[k]<minV) minV=tv[k]; }
+  const d=cx.getImageData(0,0,W,H).data, N=W*H; detBuffers(N); const mask=DET.mask, lab=DET.lab, stack=DET.stack;
+  for(let p=0,i=0;p<N;p++,i+=4){
+    mask[p]=0; const r=d[i],g=d[i+1],b=d[i+2]; let mx=r>g?r:g; if(b>mx) mx=b; if(mx<minV) continue;
+    let mn=r<g?r:g; if(b<mn) mn=b; const dd=mx-mn; if(dd===0||dd<minS*mx) continue;
+    let h; if(mx===r) h=((g-b)/dd)%6; else if(mx===g) h=(b-r)/dd+2; else h=(r-g)/dd+4; h*=60; if(h<0) h+=360;
+    const s=dd/mx;
+    for(let k=0;k<nT;k++){ if(s<ts[k]||mx<tv[k]) continue; let dh=h-th[k]; if(dh<0) dh=-dh; if(dh>180) dh=360-dh; if(dh<=tt[k]){ mask[p]=k+1; break; } }
+  }
+  const blobs=[]; let nl=0;
+  for(let p=0;p<N;p++){ const m=mask[p]; if(!m||lab[p]) continue; nl++; let sp=0; stack[sp++]=p; lab[p]=nl;
+    let area=0,sx=0,sy=0,x0=W,y0=H,x1=0,y1=0;
+    while(sp){ const q=stack[--sp], x=q%W, y=(q/W)|0; area++; sx+=x; sy+=y;
+      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+      if(x>0&&mask[q-1]===m&&!lab[q-1]){lab[q-1]=nl;stack[sp++]=q-1;}
+      if(x<W-1&&mask[q+1]===m&&!lab[q+1]){lab[q+1]=nl;stack[sp++]=q+1;}
+      if(y>0&&mask[q-W]===m&&!lab[q-W]){lab[q-W]=nl;stack[sp++]=q-W;}
+      if(y<H-1&&mask[q+W]===m&&!lab[q+W]){lab[q+W]=nl;stack[sp++]=q+W;} }
+    if(area<4) continue;
+    const bw=x1-x0+1,bh=y1-y0+1; blobs.push({k:m-1,area,cx:sx/area,cy:sy/area,x0,y0,x1,y1,fill:area/(bw*bh),aspect:Math.max(bw,bh)/Math.min(bw,bh)}); }
+  const minA=Math.max(6,N*0.00002);
+  const ok=b=>b.area>=minA&&b.fill>=0.5&&b.aspect<=2.2;
+  const res={found:0,pts:null,msgs:[],W:W0,H:H0};
+  const fctx=opts.fullCtx||src.getContext('2d',{willReadFrequently:true});
+  const refine=(b,t)=>{ const pad=3, X0=Math.max(0,Math.floor((b.x0-pad)/s2)), Y0=Math.max(0,Math.floor((b.y0-pad)/s2));
+    const X1=Math.min(W0-1,Math.ceil((b.x1+1+pad)/s2)), Y1=Math.min(H0-1,Math.ceil((b.y1+1+pad)/s2)), w=X1-X0+1, h=Y1-Y0+1;
+    if(s2===1||w*h>4e6) return {x:(b.cx+0.5)/s2,y:(b.cy+0.5)/s2,r:Math.sqrt(b.area/Math.PI)/s2};
+    const dd=fctx.getImageData(X0,Y0,w,h).data; let n=0,sx=0,sy=0;
+    for(let yy=0,i=0;yy<h;yy++) for(let xx=0;xx<w;xx++,i+=4){ if(hueOK(dd[i],dd[i+1],dd[i+2],t)){ n++; sx+=xx; sy+=yy; } }
+    return n>4?{x:X0+sx/n+0.5,y:Y0+sy/n+0.5,r:Math.sqrt(n/Math.PI)}:{x:(b.cx+0.5)/s2,y:(b.cy+0.5)/s2,r:Math.sqrt(b.area/Math.PI)/s2}; };
+  if(three){
+    const pts=[], missing=[], crowded=[];
+    for(let k=0;k<3;k++){ const c=blobs.filter(b=>b.k===k&&ok(b)).sort((a,b)=>b.area-a.area); res.found+=Math.min(1,c.length);
+      if(!c.length){ missing.push(JOINTS[k].toUpperCase()); continue; }
+      if(c.length>1&&c[1].area>0.5*c[0].area){ crowded.push(JOINTS[k].toUpperCase()); continue; }
+      pts[k]=refine(c[0],T[k]); }
+    if(missing.length) res.msgs.push({t:'bad',m:`No ${missing.join(', ')} sticker found. Check it is in view, or set its colour with Pick.`});
+    if(crowded.length) res.msgs.push({t:'bad',m:`More than one round ${crowded.join(', ')}-coloured object is in view, so no reading is given. Move the other object out of view, or place the points by hand.`});
+    if(missing.length||crowded.length) return res;
+    const ar=pts.map(p=>p.r*p.r).sort((x,y)=>y-x);
+    if(ar[0]>25*ar[2]){ res.msgs.push({t:'bad',m:'The three coloured spots are very different in size, so they are probably not the three stickers. No reading is given.'}); return res; }
+    res.pts=pts; res.kneeBy='colour';
+  } else {
+    const cand=blobs.filter(ok).sort((a,b)=>b.area-a.area); res.found=cand.length;
+    if(cand.length<3){ res.msgs.push({t:'bad',m:cand.length?`Only ${cand.length} sticker(s) found. Check all three are in view, or set the colour with Pick.`:'No stickers found. Set the sticker colour with Pick, or place the points by hand.'}); return res; }
+    if(cand.length>3&&cand[3].area>0.5*cand[2].area){ res.msgs.push({t:'bad',m:`${cand.length} round objects of the sticker colour were found, not 3, so no reading is given. Clear the background or use three-colour mode.`}); return res; }
+    const top=cand.slice(0,3), ar=top.map(b=>b.area).sort((x,y)=>y-x);
+    if(ar[1]>4*ar[2]||ar[0]>14*ar[2]){ res.msgs.push({t:'bad',m:'The three coloured spots are very different in size, so they are probably not the three stickers. No reading is given.'}); return res; }
+    res.pts=assign(top.map(b=>refine(b,target)),opts.prev,top.map(b=>b.area)); res.kneeBy=assign.lastRule;
+  }
+  for(const p of res.pts){ if(p.x<0.06*W0||p.x>0.94*W0||p.y<0.06*H0||p.y>0.94*H0){ res.msgs.push({t:'warn',m:'A sticker is near the edge of the picture, where lens distortion is largest. Centre the leg if you can.'}); break; } }
+  const g=geom(res.pts);
+  // physical plausibility: refuse readings no knee can produce, or a "leg" whose thigh and shank lengths are wildly different
+  const ratio=g.L1/Math.max(1e-6,g.L2);
+  if(Math.abs(g.flexion)>165||ratio<0.33||ratio>3){ res.msgs.unshift({t:'bad',m:'The three spots do not form a plausible leg (impossible angle or very unequal thigh and shank), so no reading is given. Check that the right things are being detected.'}); res.pts=null; return res; }
+  if(g.L1<8*g.r||g.L2<8*g.r) res.msgs.push({t:'warn',m:'The stickers are close together for their size. Move closer so the leg fills more of the picture.'});
+  if(g.flexion<-25) res.msgs.push({t:'warn',m:'Large negative angle: the "toes point" setting is probably the wrong way round (Setup tab).'});
+  return res;
+}
+// one-colour mode: which sticker is the knee? tracking, then clearly biggest, then geometry
+function assign(p,prev,areas){
+  const d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  if(prev&&prev.every(Boolean)){
+    const perms=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]]; let best=null,bd=1e18;
+    for(const q of perms){ const s=d(p[q[0]],prev[0])+d(p[q[1]],prev[1])+d(p[q[2]],prev[2]); if(s<bd){bd=s;best=q;} }
+    assign.lastRule='tracked'; return best.map(i=>p[i]); }
+  let k=-1;
+  if(areas){ const o=[0,1,2].sort((a,b)=>areas[b]-areas[a]); if(areas[o[0]]>=1.7*areas[o[1]]){ k=o[0]; assign.lastRule='biggest sticker'; } }
+  if(k<0){ const pr=[[0,1,2],[0,2,1],[1,2,0]].map(([i,j,kk])=>({kk,dd:d(p[i],p[j])})).sort((a,b)=>b.dd-a.dd); k=pr[0].kk; assign.lastRule='geometry'; }
+  const o=[0,1,2].filter(i=>i!==k); let hip=p[o[0]],ank=p[o[1]]; if(hip.y>ank.y) [hip,ank]=[ank,hip];
+  return [hip,p[k],ank];
+}
+const swapKnee=pts=>[pts[1],pts[2],pts[0]];
+// Signed knee flexion: 0 = straight, + = bending, - = hyperextension. Sign uses the toes direction setting.
+function geom(p){ const [h,k,a]=p; const ux=k.x-h.x,uy=k.y-h.y,vx=a.x-k.x,vy=a.y-k.y;
+  const L1=Math.hypot(ux,uy),L2=Math.hypot(vx,vy);
+  const ang=Math.atan2(ux*vy-uy*vx,ux*vx+uy*vy)*180/Math.PI;
+  const flexion=toes==='right'?ang:-ang;
+  const r=((h.r||6)+(k.r||6)+(a.r||6))/3;
+  return {flexion,interior:180-Math.abs(ang),L1,L2,r}; }
+
+/* ================================================================ overlay */
+function drawOverlay(ctx,pts,angle,s,opts={}){
+  if(!pts) return;
+  ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.strokeStyle='rgba(0,0,0,.55)'; ctx.lineWidth=8*s; ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.stroke();
+  ctx.strokeStyle='#ffc24b'; ctx.lineWidth=3.6*s; ctx.stroke();
+  const g=geom(pts), ux=(pts[1].x-pts[0].x)/g.L1, uy=(pts[1].y-pts[0].y)/g.L1;
+  ctx.setLineDash([9*s,7*s]); ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.lineWidth=2.2*s;
+  ctx.beginPath(); ctx.moveTo(pts[1].x,pts[1].y); ctx.lineTo(pts[1].x+ux*g.L2*0.8,pts[1].y+uy*g.L2*0.8); ctx.stroke(); ctx.setLineDash([]);
+  const a0=Math.atan2(uy,ux), a1=Math.atan2(pts[2].y-pts[1].y,pts[2].x-pts[1].x); let da=a1-a0; while(da>Math.PI) da-=2*Math.PI; while(da<-Math.PI) da+=2*Math.PI;
+  ctx.strokeStyle='#5ef2d6'; ctx.lineWidth=3.5*s; ctx.beginPath(); ctx.arc(pts[1].x,pts[1].y,Math.min(g.L1,g.L2)*0.3,a0,a0+da,da<0); ctx.stroke();
+  const labels=['HIP','KNEE','ANKLE'], cols=mode==='three'?JOINTS.map(j=>targets3[j].css):[target.css,target.css,target.css];
+  pts.forEach((p,i)=>{ ctx.beginPath(); ctx.arc(p.x,p.y,7*s,0,7); ctx.fillStyle=cols[i]; ctx.fill(); ctx.lineWidth=2.5*s; ctx.strokeStyle='#fff'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p.x-15*s,p.y); ctx.lineTo(p.x+15*s,p.y); ctx.moveTo(p.x,p.y-15*s); ctx.lineTo(p.x,p.y+15*s); ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1.3*s; ctx.stroke();
+    ctx.font=`800 ${13*s}px -apple-system,Segoe UI,Roboto,Arial`; ctx.lineWidth=4*s; ctx.strokeStyle='rgba(0,0,0,.85)'; ctx.fillStyle='#fff';
+    ctx.strokeText(labels[i],p.x+13*s,p.y-11*s); ctx.fillText(labels[i],p.x+13*s,p.y-11*s); });
+  if(angle!=null&&isFinite(angle)){ const t=`${angle.toFixed(1)}°`; ctx.font=`800 ${30*s}px -apple-system,Segoe UI,Roboto,Arial`;
+    const x=pts[1].x+20*s, y=pts[1].y+38*s; ctx.lineWidth=6*s; ctx.strokeStyle='rgba(0,0,0,.85)'; ctx.strokeText(t,x,y); ctx.fillStyle='#ffc24b'; ctx.fillText(t,x,y); }
+  if(opts.loupe){ const {x,y}=opts.loupe, R=72*s, z=3, lx=R+12*s, ly=R+12*s;
+    ctx.save(); ctx.beginPath(); ctx.arc(lx,ly,R,0,7); ctx.clip(); ctx.drawImage(opts.src,x-R/z,y-R/z,2*R/z,2*R/z,lx-R,ly-R,2*R,2*R);
+    ctx.strokeStyle='#ff3d6e'; ctx.lineWidth=1.6*s; ctx.beginPath(); ctx.moveTo(lx-R,ly); ctx.lineTo(lx+R,ly); ctx.moveTo(lx,ly-R); ctx.lineTo(lx,ly+R); ctx.stroke(); ctx.restore();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=3*s; ctx.beginPath(); ctx.arc(lx,ly,R,0,7); ctx.stroke(); }
+  ctx.restore();
+}
+function dispScale(cv){ const w=cv.getBoundingClientRect().width; return Math.max(1,w>50?cv.width/w:cv.width/700); }
+
+/* ================================================================ session form (shared by Live, Photo, Video) */
+const POSES={0:'standing_zero',1:'straight',2:'foot_flat_90',3:'max_flexion',4:'other'};
+const POSE_TXT={0:'Standing, leg straight',1:'Seated, leg straight on a stool',2:'Seated, foot flat, knee ~90°',3:'Seated, maximum bend',4:'Other'};
+const S=Object.assign({subject:'S01',trial:'1',hold:'0',note:''},lsGet('akg_form',{}));
+const forms=[];
+function buildForm(id,withPose=true){
+  const f=$(id);
+  f.innerHTML=`<label class="f">Subject<input data-k="subject" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+    <label class="f">Trial<select data-k="trial"><option>1</option><option>2</option><option>3</option></select></label>
+    ${withPose?`<label class="f pose">Pose<select data-k="hold">${[0,1,2,3,4].map(i=>`<option value="${i}">${i} · ${POSE_TXT[i]}</option>`).join('')}</select></label>`:''}
+    <label class="f wide">Note<input data-k="note" placeholder="optional" autocomplete="off"></label>`;
+  f.querySelectorAll('[data-k]').forEach(el=>{ el.addEventListener('input',()=>{ S[el.dataset.k]=el.value; lsSet('akg_form',S); syncForms(f); onSession(); }); });
+  forms.push(f); syncForms(); }
+function syncForms(except){ for(const f of forms){ if(f===except) continue; f.querySelectorAll('[data-k]').forEach(el=>{ if(el.value!==String(S[el.dataset.k])) el.value=S[el.dataset.k]; }); } }
+function getS(){ return {subject:String(S.subject).trim().toUpperCase()||'S01',trial:+S.trial||1,hold:+S.hold||0,note:String(S.note||'').trim()}; }
+function setHold(h){ S.hold=String(h); lsSet('akg_form',S); syncForms(); onSession(); }
+function onSession(){ renderGuide(); }
+function showMsgs(id,list){ const ul=$(id); ul.textContent=''; for(const m of list){ const li=document.createElement('li'); li.className=m.t||''; li.textContent=m.m; ul.appendChild(li); } }
+
+/* ================================================================ storage */
+const store={mode:'local',db:null,recs:[],checks:[],listeners:[],
+  async init(){
+    this.recs=lsGet('akg_recs',[]); this.checks=lsGet('akg_checks',[]); this.emit();
+    let db=null; try{ if(window.claude&&window.claude.use) db=await window.claude.use('db'); }catch(e){ db=null; }
+    if(!db){ try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){} return; }
+    this.db=db; this.mode='db'; setChip('saved online',true);
+    db.collection('measurements').onSnapshot(s=>{ this.recs=s.docs.map(d=>({id:d.id,...d.data()})); lsSet('akg_recs',this.recs); this.emit(); },
+      ()=>{ setChip('this device only',false); this.mode='local'; });
+    db.collection('checks').onSnapshot(s=>{ this.checks=s.docs.map(d=>({id:d.id,...d.data()})); lsSet('akg_checks',this.checks); this.emit(); },()=>{});
+  },
+  async add(kind,rec){ rec.ts=new Date().toISOString(); rec.app=APP_VERSION; const list=kind==='checks'?this.checks:this.recs;
+    if(this.mode==='db'){ try{ await this.db.collection(kind).add(rec); return true; }catch(e){ toast('Could not save online; saved on this device.'); } }
+    rec.id='L'+Date.now()+Math.random().toString(36).slice(2,6); list.push(rec); lsSet(kind==='checks'?'akg_checks':'akg_recs',list); this.emit(); return true; },
+  async remove(kind,id){ const list=kind==='checks'?this.checks:this.recs;
+    if(this.mode==='db'&&!String(id).startsWith('L')){ try{ await this.db.doc(kind+'/'+id).delete(); return; }catch(e){ toast('Could not delete online.'); return; } }
+    const i=list.findIndex(r=>r.id===id); if(i>=0) list.splice(i,1); lsSet(kind==='checks'?'akg_checks':'akg_recs',list); this.emit(); },
+  on(fn){ this.listeners.push(fn); }, emit(){ this.listeners.forEach(f=>f()); } };
+function setChip(t,ok){ const c=$('storeChip'); c.hidden=false; c.textContent=t; c.className='chip '+(ok?'ok':'bad'); }
+function recordFrom(g,extra){ const f=getS(); return {subject:f.subject,trial:f.trial,hold:f.hold,pose:POSES[f.hold]||'other',angle:+g.flexion.toFixed(2),interior:+g.interior.toFixed(2),toes,note:f.note,...extra}; }
+
+/* ================================================================ capture feedback */
+let actx=null;
+function beep(freq=880,dur=0.12){ if(!soundOn) return; try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); const o=actx.createOscillator(),g=actx.createGain();
+  o.frequency.value=freq; o.type='sine'; g.gain.setValueAtTime(0.0001,actx.currentTime); g.gain.exponentialRampToValueAtTime(0.25,actx.currentTime+0.01); g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+dur);
+  o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime+dur+0.02); }catch(e){} }
+function buzz(){ try{ navigator.vibrate&&navigator.vibrate(50); }catch(e){} }
+
+/* ================================================================ still-image station (Photo and Accuracy tabs) */
+const MAXPX=3200;  // large phone photos are scaled to this long side (iOS canvas limit; no loss of precision at this size)
+function makeStation(cfg){
+  const st={img:null,src:document.createElement('canvas'),pts:null,method:'auto',res:null,drag:-1,manualIdx:-1};
+  const view=$(cfg.canvas), stage=$(cfg.stage), vctx=view.getContext('2d');
+  function render(loupe){ if(!st.img) return; vctx.drawImage(st.src,0,0); const ok=st.pts&&st.pts.every(Boolean); const s=dispScale(view);
+    if(ok) drawOverlay(vctx,st.pts,cfg.angle?cfg.angle(geom(st.pts)):geom(st.pts).flexion,s,loupe?{loupe,src:st.src}:{});
+    else if(st.pts){ st.pts.forEach(p=>{ if(!p) return; vctx.beginPath(); vctx.arc(p.x,p.y,8*s,0,7); vctx.fillStyle='#ffc24b'; vctx.fill(); }); }
+    if(st.manualIdx>=0){ vctx.font=`800 ${22*s}px -apple-system,Segoe UI,Roboto,Arial`; vctx.fillStyle='#ffc24b'; vctx.strokeStyle='#000'; vctx.lineWidth=5*s;
+      const t=`Tap the ${['HIP','KNEE','ANKLE'][st.manualIdx]} sticker`; vctx.strokeText(t,16*s,view.height-20*s); vctx.fillText(t,16*s,view.height-20*s); }
+    cfg.onChange&&cfg.onChange(st); }
+  function run(){ if(!st.img) return; st.res=detect(st.src,{workWidth:1000}); st.pts=st.res.pts; st.method='auto'; st.manualIdx=-1; render(); }
+  async function load(file){ if(!file) return; let bmp;
+    try{ bmp=await createImageBitmap(file,{imageOrientation:'from-image'}); }
+    catch(e){ try{ bmp=await createImageBitmap(file); }catch(e2){
+      try{ bmp=await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=URL.createObjectURL(file); }); }
+      catch(e3){ toast('This image format cannot be read here. Try a JPG or PNG.'); return; } } }
+    const w=bmp.width||bmp.naturalWidth, h=bmp.height||bmp.naturalHeight, k=Math.min(1,MAXPX/Math.max(w,h));
+    st.img=bmp; st.src.width=Math.round(w*k); st.src.height=Math.round(h*k);
+    const sctx=st.src.getContext('2d',{willReadFrequently:true}); sctx.imageSmoothingQuality='high'; sctx.drawImage(bmp,0,0,st.src.width,st.src.height);
+    view.width=st.src.width; view.height=st.src.height; view.hidden=false; const e=stage.querySelector('.empty'); if(e) e.hidden=true;
+    run(); requestAnimationFrame(()=>render()); }
+  const toImg=ev=>{ const r=view.getBoundingClientRect(); return {x:(ev.clientX-r.left)*view.width/r.width,y:(ev.clientY-r.top)*view.height/r.height,k:view.width/r.width}; };
+  view.addEventListener('pointerdown',ev=>{ if(!st.img) return; const p=toImg(ev);
+    if(st.manualIdx>=0){ st.pts=st.pts&&st.pts.length===3?st.pts:[null,null,null]; st.pts[st.manualIdx]={x:p.x,y:p.y,r:8}; st.manualIdx++; if(st.manualIdx>2){ st.manualIdx=-1; st.method='manual'; } render(); return; }
+    if(picking){ const c=sampleColor(st.src.getContext('2d',{willReadFrequently:true}),Math.round(p.x),Math.round(p.y));
+      if(c){ applyPicked(c); run(); rerunAll(st); } else toast('That spot is not a bright colour. Tap the middle of a sticker.'); return; }
+    if(st.pts&&st.pts.every(Boolean)){ let best=-1,bd=1e9; st.pts.forEach((q,i)=>{ const dd=Math.hypot(q.x-p.x,q.y-p.y); if(dd<bd){bd=dd;best=i;} });
+      if(bd<40*p.k){ st.drag=best; view.setPointerCapture(ev.pointerId); render({x:p.x,y:p.y}); } } });
+  view.addEventListener('pointermove',ev=>{ if(st.drag<0) return; const p=toImg(ev); st.pts[st.drag]={...st.pts[st.drag],x:p.x,y:p.y}; st.method='adjusted'; render({x:p.x,y:p.y}); });
+  const end=()=>{ if(st.drag>=0){ st.drag=-1; render(); } }; view.addEventListener('pointerup',end); view.addEventListener('pointercancel',end);
+  st.load=load; st.run=run; st.render=render; st.manual=()=>{ if(!st.img) return; st.pts=[null,null,null]; st.manualIdx=0; render(); };
+  st.swap=()=>{ if(st.pts&&st.pts.every(Boolean)){ st.pts=swapKnee(st.pts); st.method='adjusted'; render(); } };
+  return st; }
+const stations=[];
+function rerunAll(except){ for(const s of stations){ if(s!==except&&s.img) s.run(); } }
+
+/* ================================================================ PHOTO */
+buildForm('pForm');
+const pSt=makeStation({canvas:'pCanvas',stage:'pStage',onChange(st){
+  const ok=!!(st.pts&&st.pts.every(Boolean)), g=ok?geom(st.pts):null;
+  $('pVal').textContent=g?fmt(g.flexion):'--.-';
+  $('pMeta').innerHTML=g?`knee flexion · interior ${fmt(g.interior)}°<br>${st.method==='auto'?'auto-detected · knee by '+(st.res&&st.res.kneeBy||''):st.method==='adjusted'?'auto + hand-adjusted':'placed by hand'}`:(st.manualIdx>=0?'Placing points by hand…':'No angle yet');
+  $('pSave').disabled=!ok; $('pRedetect').disabled=!st.img; $('pManual').disabled=!st.img; $('pSwap').disabled=!ok;
+  const msgs=(st.res&&st.method==='auto')?st.res.msgs.slice():[]; if(ok&&!msgs.some(m=>m.t==='bad')) msgs.unshift({t:'ok',m:'Three stickers found. Drag any point to correct it.'});
+  showMsgs('pMsgs',msgs); }});
+stations.push(pSt);
+$('pCam').onchange=e=>{ pSt.load(e.target.files[0]); e.target.value=''; }; $('pFile').onchange=e=>{ pSt.load(e.target.files[0]); e.target.value=''; };
+$('pRedetect').onclick=()=>pSt.run(); $('pManual').onclick=()=>pSt.manual(); $('pSwap').onclick=()=>pSt.swap();
+$('pSave').onclick=async()=>{ const g=geom(pSt.pts); const f=getS(); await store.add('measurements',recordFrom(g,{source:'photo',method:pSt.method,sd:null,n_frames:1}));
+  toast(`Saved ${fmt(g.flexion)}° · ${f.subject} trial ${f.trial} pose ${f.hold}`); beep(); if(f.hold<3) setHold(f.hold+1); };
+
+/* ================================================================ VIDEO */
+buildForm('vForm',false);
+const video=$('vVideo'), vView=$('vCanvas'), vctx=vView.getContext('2d');
+const vSrc=document.createElement('canvas'); let vSrcCtx=null; let series=[],holds=[],vStop=false,vUrl=null,vName='',vStart=null;
+async function vLoad(file){ if(!file) return; if(vUrl) URL.revokeObjectURL(vUrl); vUrl=URL.createObjectURL(file); vName=file.name||'video';
+  video.src=vUrl; series=[]; holds=[]; renderHolds(); $('vChart').hidden=true; $('vRun').disabled=true; showMsgs('vMsgs',[{m:'Loading video…'}]);
+  try{ await new Promise((res,rej)=>{ video.onloadeddata=res; video.onerror=()=>rej(); }); }
+  catch(e){ showMsgs('vMsgs',[{t:'bad',m:'This browser cannot decode the video. On iPhone set Settings → Camera → Formats → Most Compatible, or analyse on the phone that recorded it.'}]); return; }
+  try{ await video.play(); video.pause(); }catch(e){}   // iOS Safari only decodes frames for seeking after one play()
+  vStart=null; await seek(0); const r0=drawFrame(); vStart=r0.pts; $('vRun').disabled=false; $('vSwap').disabled=!r0.pts;
+  showMsgs('vMsgs',[{t:r0.pts?'ok':'warn',m:`${fmt(video.duration,1)} s loaded. ${r0.pts?'Check the HIP / KNEE / ANKLE labels on this first frame, then tap Analyse video.':'No stickers on the first frame: check the sticker colours, then Analyse video.'}`}]); }
+function seek(t){ return new Promise(res=>{ let done=false; const fin=()=>{ if(done) return; done=true; video.removeEventListener('seeked',fin); res(); };
+  video.addEventListener('seeked',fin); setTimeout(fin,1500); video.currentTime=Math.min(Math.max(0,t),Math.max(0,video.duration-0.001)); }); }
+function grab(){ const w=video.videoWidth,h=video.videoHeight,k=Math.min(1,1280/Math.max(w,h)); const W=Math.round(w*k),H=Math.round(h*k);
+  if(vSrc.width!==W||vSrc.height!==H){ vSrc.width=W; vSrc.height=H; vSrcCtx=null; }
+  if(!vSrcCtx) vSrcCtx=vSrc.getContext('2d',{willReadFrequently:true}); vSrcCtx.drawImage(video,0,0,W,H); }
+function drawFrame(prev){ grab(); const r=detect(vSrc,{workWidth:640,prev,fullCtx:vSrcCtx});
+  if(vView.width!==vSrc.width||vView.height!==vSrc.height){ vView.width=vSrc.width; vView.height=vSrc.height; }
+  vView.hidden=false; const e=$('vStage').querySelector('.empty'); if(e) e.hidden=true;
+  vctx.drawImage(vSrc,0,0); const g=r.pts?geom(r.pts):null; drawOverlay(vctx,r.pts,g?g.flexion:null,dispScale(vView));
+  $('vVal').textContent=g?fmt(g.flexion):'--.-'; $('vMeta').textContent=`t = ${fmt(video.currentTime,2)} s`; return r; }
+$('vCam').onchange=e=>{ vLoad(e.target.files[0]); e.target.value=''; }; $('vFile').onchange=e=>{ vLoad(e.target.files[0]); e.target.value=''; };
+vView.addEventListener('pointerdown',ev=>{ if(!picking) return; const r=vView.getBoundingClientRect(); const x=(ev.clientX-r.left)*vView.width/r.width,y=(ev.clientY-r.top)*vView.height/r.height;
+  const c=sampleColor(vSrcCtx,Math.round(x),Math.round(y)); if(c){ applyPicked(c); drawFrame(); } });
+$('vSwap').onclick=async()=>{ if(!vStart) return; vStart=swapKnee(vStart); await seek(0); grab(); vctx.drawImage(vSrc,0,0); const g=geom(vStart); drawOverlay(vctx,vStart,g.flexion,dispScale(vView)); $('vVal').textContent=fmt(g.flexion); };
+$('vRun').onclick=async()=>{ const fps=+$('vRate').value,dt=1/fps,T=video.duration; if(!isFinite(T)||T<=0) return;
+  vStop=false; $('vStop').hidden=false; $('vRun').disabled=true; $('vProg').hidden=false; series=[]; let prev=vStart,miss=0,lastUI=0;
+  for(let t=0;t<=T-0.0005&&!vStop;t+=dt){ await seek(t); const r=drawFrame(prev);
+    if(r.pts){ prev=r.pts; series.push({t:video.currentTime,a:geom(r.pts).flexion,pts:r.pts}); } else { miss++; prev=null; series.push({t:video.currentTime,a:NaN}); }
+    const now=performance.now(); if(now-lastUI>120){ lastUI=now; $('vProg').firstElementChild.style.width=`${100*t/T}%`; await new Promise(r=>setTimeout(r,0)); } }
+  $('vStop').hidden=true; $('vRun').disabled=false; $('vProg').hidden=true;
+  holds=findHolds(series); renderHolds(); drawChart();
+  const good=series.filter(s=>isFinite(s.a)), mx=good.length?Math.max(...good.map(s=>s.a)):NaN;
+  showMsgs('vMsgs',[{t:miss>series.length*0.2?'warn':'ok',m:`${series.length} frames measured, stickers found in ${good.length} (${fmt(100*good.length/Math.max(1,series.length),0)} %). Maximum flexion ${fmt(mx)}°. ${holds.length} steady hold(s).`}]);
+  $('vSeries').disabled=!good.length; $('vSaveAll').disabled=holds.length<1; };
+$('vStop').onclick=()=>{ vStop=true; };
+function findHolds(s,tol=1.5,minDur=0.8){ const out=[]; let i=0;
+  while(i<s.length){ if(!isFinite(s[i].a)){ i++; continue; } let lo=s[i].a,hi=s[i].a,j=i+1;
+    while(j<s.length&&isFinite(s[j].a)){ const nlo=Math.min(lo,s[j].a),nhi=Math.max(hi,s[j].a); if(nhi-nlo>2*tol) break; lo=nlo; hi=nhi; j++; }
+    const dur=s[j-1].t-s[i].t; if(dur>=minDur){ const seg=s.slice(i,j).map(x=>x.a); out.push({t0:s[i].t,t1:s[j-1].t,a:median(seg),sd:sd(seg),n:seg.length,mid:s[(i+j)>>1].t}); i=j; } else i++; }
+  return out; }
+function guessPoses(hs){ const n=hs.length, g=new Array(n).fill(-1); if(n===4) return [0,1,2,3]; if(n===3) return [1,2,3];
+  let k=0; if(n&&Math.abs(hs[0].a)<12){ g[0]=0; k=1; } let pose=1; for(let i=k;i<n&&pose<=3;i++) g[i]=pose++; return g; }
+function renderHolds(){ const tb=$('vHolds'); tb.textContent='';
+  if(!holds.length){ tb.innerHTML=`<tr><td colspan="5" style="color:var(--muted)">${series.length?'No steady holds found (the angle never stayed within ±1.5° for 0.8 s).':'No video analysed yet.'}</td></tr>`; return; }
+  const guess=guessPoses(holds);
+  holds.forEach((h,i)=>{ const tr=document.createElement('tr'); tr.style.cursor='pointer';
+    tr.innerHTML=`<td class="n">${i+1}</td><td class="n">${fmt(h.t0,1)}–${fmt(h.t1,1)}</td><td class="n"><b>${fmt(h.a,1)}°</b></td><td class="n">${fmt(h.sd,2)}</td><td></td>`;
+    const sel=document.createElement('select'); sel.setAttribute('aria-label','Pose for hold '+(i+1)); sel.style.cssText='width:auto;min-height:36px;padding:4px 6px;font-size:14px';
+    sel.innerHTML='<option value="-1">skip</option><option value="0">0 standing</option><option value="1">1 straight</option><option value="2">2 ~90°</option><option value="3">3 max</option>';
+    sel.value=String(h.pose!=null?h.pose:guess[i]); sel.onclick=e=>e.stopPropagation(); sel.onchange=()=>{ h.pose=+sel.value; };
+    h.pose=+sel.value; tr.lastElementChild.appendChild(sel); tr.onclick=async()=>{ await seek(h.mid); drawFrame(); }; tb.appendChild(tr); }); }
+$('vSaveAll').onclick=async()=>{ const f=getS(), chosen=holds.filter(h=>h.pose>=0);
+  const dup=chosen.map(h=>h.pose).filter((v,i,a)=>a.indexOf(v)!==i); if(dup.length){ toast(`Pose ${dup[0]} is chosen twice. Fix the Pose column first.`); return; }
+  if(!chosen.length){ toast('No hold has a pose chosen.'); return; }
+  for(const h of chosen) await store.add('measurements',{subject:f.subject,trial:f.trial,hold:h.pose,pose:POSES[h.pose],angle:+h.a.toFixed(2),toes,note:f.note,source:'video',method:'auto',sd:+h.sd.toFixed(3),n_frames:h.n,t0:+h.t0.toFixed(2),t1:+h.t1.toFixed(2),file:vName});
+  toast(`Saved ${chosen.length} hold(s) for ${f.subject} trial ${f.trial}`); beep(); };
+$('vSeries').onclick=()=>{ const f=getS(), rows=['time_s,flexion_deg,hip_x,hip_y,knee_x,knee_y,ankle_x,ankle_y'];
+  for(const s of series) rows.push(isFinite(s.a)?[s.t.toFixed(3),s.a.toFixed(2),...s.pts.flatMap(p=>[p.x.toFixed(1),p.y.toFixed(1)])].join(','):`${s.t.toFixed(3)},,,,,,,`);
+  saveFile(`${f.subject}_trial${f.trial}_video_angles.csv`,rows.join('\n')+'\n'); };
+function drawChart(){ const c=$('vChart'); c.hidden=false; const dpr=window.devicePixelRatio||1, W=c.clientWidth||600, H=200; c.width=W*dpr; c.height=H*dpr; const x=c.getContext('2d'); x.scale(dpr,dpr);
+  const cs=getComputedStyle(document.documentElement), ink=cs.getPropertyValue('--muted').trim(), rule=cs.getPropertyValue('--line').trim(), acc=cs.getPropertyValue('--angle').trim();
+  x.clearRect(0,0,W,H); const good=series.filter(s=>isFinite(s.a)); if(!good.length) return; const T=series[series.length-1].t||1;
+  const amax=Math.max(10,Math.ceil(Math.max(...good.map(s=>s.a))/10)*10), amin=Math.min(0,Math.floor(Math.min(...good.map(s=>s.a))/10)*10);
+  const L=40,R=10,Tp=10,B=24, X=t=>L+(W-L-R)*t/T, Y=a=>Tp+(H-Tp-B)*(1-(a-amin)/(amax-amin));
+  x.font='11px ui-monospace,Menlo,Consolas,monospace'; x.fillStyle=ink; x.strokeStyle=rule; x.lineWidth=1;
+  const step=(amax-amin)>100?30:(amax-amin)>50?20:10;
+  for(let a=amin;a<=amax;a+=step){ x.beginPath(); x.moveTo(L,Y(a)); x.lineTo(W-R,Y(a)); x.stroke(); x.fillText(a+'°',4,Y(a)+4); }
+  x.fillText('0 s',L,H-6); x.fillText(fmt(T,1)+' s',W-R-44,H-6);
+  for(const h of holds){ x.fillStyle='rgba(124,92,255,.22)'; x.fillRect(X(h.t0),Tp,Math.max(2,X(h.t1)-X(h.t0)),H-Tp-B); }
+  x.strokeStyle=acc; x.lineWidth=2.2; x.beginPath(); let pen=false; for(const s of series){ if(!isFinite(s.a)){ pen=false; continue; } if(!pen){ x.moveTo(X(s.t),Y(s.a)); pen=true; } else x.lineTo(X(s.t),Y(s.a)); } x.stroke();
+  c.onclick=async ev=>{ const r=c.getBoundingClientRect(); const t=Math.max(0,(ev.clientX-r.left-L)/(W-L-R)*T); await seek(t); drawFrame(); }; }
+
+/* ================================================================ LIVE
+   The camera preview is the <video> itself (smooth at full frame rate); detection runs on a separate canvas
+   at up to ~30 Hz and only the overlay is redrawn. */
+buildForm('lForm');
+const lVideo=$('lVideo'), lOver=$('lOver'), octx=lOver.getContext('2d'), lCam=$('lCam');
+const lCap=document.createElement('canvas'); let lCapCtx=null;
+let lStream=null,lRun=false,buf=[],lPrev=null,armed=true,lastCap=null,lastCapT=0,facing='environment',wake=null,lostSince=0,movedSince=false,lastProc=0,procCost=0,lastPts=null;
+async function startCam(){ if(lStream) lStream.getTracks().forEach(t=>t.stop());
+  lStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false});
+  lVideo.srcObject=lStream; await lVideo.play();
+  await new Promise(r=>{ if(lVideo.videoWidth) r(); else lVideo.onloadedmetadata=()=>r(); }); sizeCam(); }
+function sizeCam(){ const w=lVideo.videoWidth,h=lVideo.videoHeight; if(!w) return; lCam.hidden=false; $('lEmpty').hidden=true;
+  lCam.style.aspectRatio=`${w} / ${h}`; lCam.style.width=`min(100%, calc(min(68vh, 760px) * ${(w/h).toFixed(4)}))`;
+  if(lOver.width!==w||lOver.height!==h){ lOver.width=w; lOver.height=h; }
+  if(lCap.width!==w||lCap.height!==h){ lCap.width=w; lCap.height=h; lCapCtx=null; } }
+async function keepAwake(){ try{ if(lRun&&navigator.wakeLock) wake=await navigator.wakeLock.request('screen'); }catch(e){} }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') keepAwake(); });
+$('lFlip').onclick=async()=>{ facing=facing==='environment'?'user':'environment'; lPrev=null; buf=[]; try{ await startCam(); }catch(e){ toast('Could not switch camera'); } };
+$('lStart').onclick=async()=>{
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ showMsgs('lMsgs',[{t:'bad',m:'This browser cannot open the camera here. Open the app from its https:// address (or the installed icon), or use the Video tab.'}]); return; }
+  try{ await startCam(); }
+  catch(e){ showMsgs('lMsgs',[{t:'bad',m:'Camera access was refused. Allow the camera for this app in the phone settings, or use the Video tab to record and analyse.'}]); return; }
+  try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); actx.resume&&actx.resume(); }catch(e){}
+  lRun=true; keepAwake(); armed=true; lastCap=null; buf=[]; lPrev=null;
+  $('lStopCam').disabled=false; $('lFlip').disabled=false; $('lCap').disabled=false; $('lSwap').disabled=false; $('lStart').disabled=true; showMsgs('lMsgs',[]); tick(); };
+function stopCam(){ lRun=false; if(lStream) lStream.getTracks().forEach(t=>t.stop()); lStream=null; try{ wake&&wake.release(); }catch(e){} wake=null;
+  $('lStart').disabled=false; $('lStopCam').disabled=true; $('lFlip').disabled=true; $('lCap').disabled=true; octx.clearRect(0,0,lOver.width,lOver.height); }
+$('lStopCam').onclick=stopCam;
+lOver.addEventListener('pointerdown',ev=>{ if(!picking||!lCapCtx) return; const r=lOver.getBoundingClientRect(); const x=(ev.clientX-r.left)*lOver.width/r.width,y=(ev.clientY-r.top)*lOver.height/r.height;
+  const c=sampleColor(lCapCtx,Math.round(x),Math.round(y)); if(c) applyPicked(c); else toast('That spot is not a bright colour. Tap the middle of a sticker.'); });
+function schedule(){ if(!lRun) return; if(lVideo.requestVideoFrameCallback) lVideo.requestVideoFrameCallback(tick); else requestAnimationFrame(tick); }
+function tick(){ if(!lRun) return;
+  const now=performance.now();
+  if(lVideo.videoWidth&&now-lastProc>=Math.max(30,procCost*1.3)){ lastProc=now; const t0=performance.now();
+    if(lOver.width!==lVideo.videoWidth) sizeCam();
+    if(!lCapCtx) lCapCtx=lCap.getContext('2d',{willReadFrequently:true});
+    lCapCtx.drawImage(lVideo,0,0,lCap.width,lCap.height);
+    const r=detect(lCap,{workWidth:480,prev:lPrev,fullCtx:lCapCtx});
+    octx.clearRect(0,0,lOver.width,lOver.height);
+    if(r.pts){ lPrev=r.pts; lastPts=r.pts; lostSince=0; const g=geom(r.pts); buf.push({t:now,a:g.flexion}); drawOverlay(octx,r.pts,null,dispScale(lOver)); }
+    else { lPrev=null; lastPts=null; if(!lostSince) lostSince=now; buf=[]; }
+    buf=buf.filter(b=>now-b.t<1000);
+    const recent=buf.filter(b=>now-b.t<500).map(b=>b.a), s=recent.length>4?sd(recent):99, m=recent.length?median(recent):NaN;
+    $('lVal').textContent=isFinite(m)?fmt(m):'--.-';
+    $('lMeta').innerHTML=r.pts?`steadiness SD ${s<90?fmt(s,2):'--'}°<br>${Math.round(1000/Math.max(30,procCost*1.3))} readings/s`:(r.msgs[0]?esc(r.msgs[0].m):'stickers not found');
+    $('lStab').style.width=`${Math.max(0,Math.min(100,100*(1-s/2)))}%`;
+    // re-arm auto-capture once the leg has clearly moved: angle changed by >5°, stickers lost for >0.7 s, or visible motion (SD > 3°)
+    if(isFinite(s)&&s>3&&s<90) movedSince=true;
+    if(!armed&&now-lastCapT>1500&&((lastCap!=null&&isFinite(m)&&Math.abs(m-lastCap)>5)||(lostSince&&now-lostSince>700)||movedSince)) armed=true;
+    if($('lAuto').checked&&armed&&s<0.4&&recent.length>=8&&now-lastCapT>1500) capture(m,s,recent.length);
+    procCost=performance.now()-t0; }
+  schedule(); }
+async function capture(m,s,n){ const f=getS(), hold=f.hold; armed=false; lastCap=m; lastCapT=performance.now(); movedSince=false;
+  await store.add('measurements',{subject:f.subject,trial:f.trial,hold,pose:POSES[hold]||'other',angle:+m.toFixed(2),toes,note:f.note,source:'live',method:'auto',sd:+s.toFixed(3),n_frames:n});
+  buzz(); beep(hold===3?1175:880);
+  if(hold>=3&&$('lAuto').checked){ $('lAuto').checked=false; const nt=Math.min(3,f.trial+1); S.trial=String(nt); setHold(0);
+    toast(`${f.subject} trial ${f.trial} complete. Next: trial ${nt}, pose 0. Tick auto-capture to start it.`); }
+  else { toast(`Captured ${fmt(m)}° as pose ${hold}`); setHold(Math.min(4,hold+1)); } }
+$('lAuto').onchange=()=>{ if($('lAuto').checked){ armed=true; lastCap=null; lastCapT=0; } };
+$('lSwap').onclick=()=>{ if(lPrev) lPrev=swapKnee(lPrev); };
+$('lCap').onclick=()=>{ const now=performance.now(), recent=buf.filter(b=>now-b.t<500).map(b=>b.a); if(recent.length<3){ toast('Stickers not found right now'); return; } capture(median(recent),sd(recent),recent.length); };
+function renderGuide(){ const f=getS(), done=new Set(store.recs.filter(r=>r.subject===f.subject&&+r.trial===f.trial).map(r=>+r.hold));
+  $('lGNum').textContent=f.hold; $('lGTxt').innerHTML=`${esc(POSE_TXT[f.hold])}<small>${esc(f.subject)} · trial ${f.trial} · ${done.has(f.hold)?'already saved, a new capture is averaged with it':'hold still to capture'}</small>`;
+  const dots=$('lDots'); dots.textContent='';
+  for(let i=0;i<=3;i++){ const b=document.createElement('button'); b.textContent=i; b.title=POSE_TXT[i]; b.setAttribute('aria-label',`Pose ${i}: ${POSE_TXT[i]}`);
+    if(done.has(i)) b.classList.add('done'); if(i===f.hold) b.classList.add('cur'); b.onclick=()=>{ setHold(i); armed=true; }; dots.appendChild(b); } }
+
+/* ================================================================ ACCURACY CHECK */
+// Cards may be printed bending either way, so the check compares the unsigned angle with the true angle.
+const cSt=makeStation({canvas:'cCanvas',stage:'cStage',angle:g=>Math.abs(g.flexion),onChange(st){ const ok=!!(st.pts&&st.pts.every(Boolean)), g=ok?geom(st.pts):null, tru=+$('cTrue').value;
+  $('cVal').textContent=g?fmt(Math.abs(g.flexion),2):'--.-'; $('cSwap').disabled=!ok; $('cMeta').innerHTML=g?`true ${tru}° · error ${fmt(Math.abs(g.flexion)-tru,2)}°`:'No angle yet'; $('cSave').disabled=!ok;
+  showMsgs('cMsgs',st.res&&st.method==='auto'?st.res.msgs.filter(m=>!/toes/.test(m.m)):[]); }});
+stations.push(cSt);
+$('cSwap').onclick=()=>cSt.swap();
+$('cCam').onchange=e=>{ cSt.load(e.target.files[0]); e.target.value=''; }; $('cFile').onchange=e=>{ cSt.load(e.target.files[0]); e.target.value=''; }; $('cTrue').onchange=()=>cSt.render();
+$('cSave').onclick=async()=>{ const g=geom(cSt.pts), m=Math.abs(g.flexion), tru=+$('cTrue').value; await store.add('checks',{true_deg:tru,measured:+m.toFixed(3),error:+(m-tru).toFixed(3),condition:$('cCond').value,method:cSt.method}); toast(`Saved check: error ${fmt(m-tru,2)}°`); beep(); };
+function cardSVG(f){ // A4 landscape in mm. Thigh 90 mm, shank 80 mm; the shank swings LEFT, matching "toes point right".
+  const kx=160,ky=112,r=9,rad=f*Math.PI/180,hx=kx,hy=ky-90,ax=kx-80*Math.sin(rad),ay=ky+80*Math.cos(rad);
+  const three=mode==='three', pr=c=>/^#|^rgb/.test(c)?c:'#16c172';
+  const cH=three?pr(targets3.hip.css):pr(target.css), cK=three?pr(targets3.knee.css):pr(target.css), cA=three?pr(targets3.ankle.css):pr(target.css);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 297 210"><rect width="297" height="210" fill="#fff"/>
+<line x1="${hx}" y1="${hy}" x2="${kx}" y2="${ky}" stroke="#bbb" stroke-width="0.4"/><line x1="${kx}" y1="${ky}" x2="${ax.toFixed(3)}" y2="${ay.toFixed(3)}" stroke="#bbb" stroke-width="0.4"/>
+<circle cx="${hx}" cy="${hy}" r="${r}" fill="${cH}"/><circle cx="${kx}" cy="${ky}" r="${three?r:r*1.7}" fill="${cK}"/><circle cx="${ax.toFixed(3)}" cy="${ay.toFixed(3)}" r="${r}" fill="${cA}"/>
+<text x="12" y="16" font-family="Arial" font-size="7" fill="#222">GonioLens calibration card · knee flexion ${f}° · ${three?'three-colour':'one-colour'} mode</text>
+<text x="12" y="200" font-family="Arial" font-size="4.5" fill="#555">Print on A4 (any scale keeps the angle). Stick flat on a wall, photograph square-on. This bar is 100 mm at 100 %.</text>
+<line x1="185" y1="198" x2="285" y2="198" stroke="#222" stroke-width="0.8"/></svg>`; }
+for(const f of [0,30,60,90,120]){ const b=document.createElement('button'); b.className='btn small'; b.textContent=`Card ${f}°`; b.onclick=()=>saveFile(`goniolens_card_${f}deg_${mode==='three'?'3colour':'1colour'}.svg`,cardSVG(f),'image/svg+xml'); $('cardRow').appendChild(b); }
+function renderChecks(){ const tb=$('cList'); tb.textContent=''; const rows=[...store.checks].sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
+  if(!rows.length) tb.innerHTML='<tr><td colspan="5" style="color:var(--muted)">No checks saved yet.</td></tr>';
+  for(const r of rows){ const tr=document.createElement('tr'); tr.innerHTML=`<td class="n">${r.true_deg}°</td><td class="n">${fmt(r.measured,2)}°</td><td class="n">${r.error>0?'+':''}${fmt(r.error,2)}°</td><td>${esc(r.condition)}</td><td></td>`;
+    const b=document.createElement('button'); b.className='btn small danger'; b.textContent='Delete'; b.onclick=()=>store.remove('checks',r.id); tr.lastElementChild.appendChild(b); tb.appendChild(tr); }
+  const groups={}; for(const r of rows){ (groups[r.condition]=groups[r.condition]||[]).push(r.error); (groups.ALL=groups.ALL||[]).push(r.error); }
+  const sb=$('cSummary'); sb.textContent=''; const keys=Object.keys(groups).sort((a,b)=>a==='ALL'?1:b==='ALL'?-1:a.localeCompare(b));
+  if(!keys.length) sb.innerHTML='<tr><td colspan="5" style="color:var(--muted)">No checks yet.</td></tr>';
+  for(const k of keys){ const e=groups[k], tr=document.createElement('tr'); if(k==='ALL') tr.style.fontWeight='700';
+    tr.innerHTML=`<td>${k==='ALL'?'All conditions':esc(k)}</td><td class="n">${e.length}</td><td class="n">${fmt(e.reduce((p,c)=>p+c,0)/e.length,2)}°</td><td class="n">${fmt(e.reduce((p,c)=>p+Math.abs(c),0)/e.length,2)}°</td><td class="n">${fmt(Math.max(...e.map(Math.abs)),2)}°</td>`; sb.appendChild(tr); } }
+$('cExport').onclick=()=>{ const rows=['true_deg,measured_deg,error_deg,condition,method,timestamp']; for(const r of store.checks) rows.push([r.true_deg,r.measured,r.error,`"${r.condition||''}"`,r.method||'',r.ts||''].join(',')); saveFile('goniometer_accuracy_checks.csv',rows.join('\n')+'\n'); };
+
+/* ================================================================ RECORDS */
+const key=r=>`${r.subject}|${r.trial}|${r.hold}`;
+function renderRecs(){ const sel=$('rFilter'), cur=sel.value, subs=[...new Set(store.recs.map(r=>r.subject))].sort();
+  sel.innerHTML='<option value="">all</option>'+subs.map(s=>`<option>${esc(s)}</option>`).join(''); sel.value=subs.includes(cur)?cur:'';
+  const counts={}; for(const r of store.recs) counts[key(r)]=(counts[key(r)]||0)+1;
+  const rows=store.recs.filter(r=>!sel.value||r.subject===sel.value).sort((a,b)=>String(a.subject).localeCompare(String(b.subject))||a.trial-b.trial||a.hold-b.hold||String(a.ts).localeCompare(String(b.ts)));
+  const tb=$('rList'); tb.textContent='';
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="9" style="color:var(--muted)">No readings saved yet. Measure in Live, Photo or Video and save.</td></tr>'; renderGuide(); return; }
+  for(const r of rows){ const tr=document.createElement('tr'), d=r.ts?new Date(r.ts):null, c=counts[key(r)];
+    tr.innerHTML=`<td>${esc(r.subject)}</td><td class="n">${r.trial}</td><td class="n">${r.hold} <span class="hide-sm">· ${esc(r.pose)}</span> ${c>1?`<span class="chip warn">×${c}</span>`:''}</td><td class="n"><b>${fmt(r.angle,2)}°</b></td><td class="n hide-sm">${r.sd!=null?fmt(r.sd,2):''}</td><td class="hide-sm">${esc(r.source)}</td><td class="hide-sm">${esc(r.method)}</td><td class="n hide-sm">${d?d.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):''}</td><td></td>`;
+    const b=document.createElement('button'); b.className='btn small danger'; b.textContent='Delete'; b.onclick=()=>{ if(confirm(`Delete ${r.subject} trial ${r.trial} pose ${r.hold} (${fmt(r.angle,2)}°)?`)) store.remove('measurements',r.id); };
+    tr.lastElementChild.appendChild(b); tb.appendChild(tr); }
+  renderGuide(); }
+$('rFilter').onchange=renderRecs;
+$('rRef').onclick=()=>{ const g={}; for(const r of store.recs){ if(r.hold>3) continue; const k=key(r); (g[k]=g[k]||{r,a:[]}).a.push(r.angle); }
+  const rows=['subject,trial,hold,pose,ref_deg,notes']; Object.keys(g).sort().forEach(k=>{ const {r,a}=g[k], m=a.reduce((p,c)=>p+c,0)/a.length;
+    rows.push([r.subject,r.trial,r.hold,r.pose,m.toFixed(2),`camera goniometer n=${a.length}${a.length>1?' sd='+sd(a).toFixed(2):''}`].join(',')); });
+  if(rows.length===1){ toast('No readings to export yet.'); return; } saveFile('reference_angles.csv',rows.join('\n')+'\n'); };
+$('rFull').onclick=()=>{ const cols=['subject','trial','hold','pose','angle','interior','sd','n_frames','source','method','toes','t0','t1','file','note','ts','app'];
+  const rows=[cols.join(',')]; for(const r of store.recs) rows.push(cols.map(c=>{ const v=r[c]; if(v==null) return ''; const s=String(v); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }).join(','));
+  saveFile('goniometer_full_log.csv',rows.join('\n')+'\n'); };
+$('rBackup').onclick=()=>{ const stamp=new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+  saveFile(`goniolens_backup_${stamp}.json`,JSON.stringify({app:APP_VERSION,exported:new Date().toISOString(),measurements:store.recs,checks:store.checks},null,1),'application/json'); };
+$('rRestore').onchange=async e=>{ const file=e.target.files[0]; e.target.value=''; if(!file) return;
+  try{ const data=JSON.parse(await file.text()); const sig=r=>`${r.ts}|${r.subject}|${r.trial}|${r.hold}|${r.angle}`; let n=0;
+    const have=new Set(store.recs.map(sig)); for(const r of data.measurements||[]){ if(!have.has(sig(r))){ store.recs.push({...r,id:r.id||('L'+Math.random().toString(36).slice(2))}); n++; } }
+    const haveC=new Set(store.checks.map(r=>`${r.ts}|${r.measured}`)); for(const r of data.checks||[]){ if(!haveC.has(`${r.ts}|${r.measured}`)) store.checks.push(r); }
+    lsSet('akg_recs',store.recs); lsSet('akg_checks',store.checks); store.emit(); toast(`Restored ${n} new reading(s).`); }
+  catch(err){ toast('That file is not a GonioLens backup.'); } };
+
+/* ================================================================ saving files */
+async function saveFile(name,text,type='text/csv'){
+  let dl=null; try{ if(window.claude&&window.claude.use) dl=await window.claude.use('downloads'); }catch(e){}
+  if(dl){ try{ await dl.save({filename:name,data:text}); return; }catch(e){ if(e&&e.code==='declined') return; } }
+  if(!window.claude){
+    try{ const file=new File([text],name,{type}); const touch=window.matchMedia&&window.matchMedia('(pointer: coarse)').matches;
+      if(touch&&navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
+    try{ const url=URL.createObjectURL(new Blob([text],{type})); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); toast(`Saved ${name}`); return; }catch(e){} }
+  $('rCopy').hidden=false; $('rText').value=text; showTab('records');
+  try{ await navigator.clipboard.writeText(text); toast(`Copied ${name} to the clipboard`); }catch(e){ $('rText').select(); toast(`Select all and copy into ${name}`); } }
+
+/* ================================================================ settings tab */
+function segInit(id,get,set){ const seg=$(id); const paint=()=>seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===get())));
+  seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{ set(b.dataset.v); paint(); }); paint(); }
+segInit('toesSeg',()=>toes,v=>{ toes=v; lsSet('akg_toes',v); rerunAll(); toast(`Toes point ${v}: bending is positive`); });
+segInit('soundSeg',()=>soundOn?'on':'off',v=>{ soundOn=v==='on'; lsSet('akg_sound',soundOn); if(soundOn) beep(); });
+segInit('themeSeg',()=>theme,v=>{ theme=v; lsSet('akg_theme',v); applyTheme(); if(!$('vChart').hidden) drawChart(); });
+$('verLine').textContent=`GonioLens ${APP_VERSION} · readings saved on this device: ${lsGet('akg_recs',[]).length}`;
+
+/* ================================================================ tabs */
+function showTab(name){ document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===name)));
+  document.querySelectorAll('[data-pane]').forEach(p=>p.hidden=p.dataset.pane!==name); lsSet('akg_tab',name);
+  if(name!=='live'&&lRun) stopCam();
+  if(name==='video'&&series.length) drawChart();
+  if(name==='setup') $('verLine').textContent=`GonioLens ${APP_VERSION} · readings saved on this device: ${store.recs.length}`;
+  requestAnimationFrame(()=>stations.forEach(st=>st.img&&st.render())); window.scrollTo(0,0); }
+document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+let rz=null; window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(!$('vChart').hidden) drawChart(); stations.forEach(st=>st.img&&st.render()); if(lRun) sizeCam(); },150); });
+
+/* ================================================================ install */
+let deferred=null;
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferred=e; $('installBtn').hidden=false; });
+$('installBtn').onclick=async()=>{ if(!deferred) return; deferred.prompt(); try{ await deferred.userChoice; }catch(e){} deferred=null; $('installBtn').hidden=true; };
+window.addEventListener('appinstalled',()=>{ $('installBtn').hidden=true; toast('GonioLens installed'); });
+
+/* ================================================================ start */
+store.on(()=>{ renderRecs(); renderChecks(); });
+renderColorRows(); updateSwapButtons();
+const startTab=lsGet('akg_tab','live'); showTab(['live','photo','video','check','records','setup'].includes(startTab)?startTab:'live');
+renderRecs(); renderChecks(); store.init();
+window.__akg={detect,geom,findHolds,cardSVG,assign,setMode,get state(){ return {mode,toes,targets3,target}; },setToes(v){ toes=v; },store,S,setHold,
+  get live(){ return {armed,lastCap,run:lRun,procCost}; }};
+})();
+if('serviceWorker' in navigator&&location.protocol!=='file:'){ window.addEventListener('load',()=>{
+  navigator.serviceWorker.register('sw.js').then(reg=>{ reg.addEventListener('updatefound',()=>{ const w=reg.installing; w&&w.addEventListener('statechange',()=>{
+    if(w.state==='activated'&&navigator.serviceWorker.controller){ const d=document.createElement('div'); d.className='toast'; d.textContent='GonioLens was updated. Close and reopen the app to use the new version.'; document.body.appendChild(d); setTimeout(()=>d.remove(),6000); } }); }); }).catch(()=>{}); }); }
+</script>
+</body>
+</html>

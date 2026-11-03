@@ -1,0 +1,28 @@
+GonioLens (formerly ArthroKNEE Goniometer) - how to put this version on your phones
+=====================================================================================
+
+1. BEFORE ANYTHING: on every phone that already has readings, open the old app ->
+   Records -> "Export reference_angles.csv" and save it somewhere safe.
+
+2. GitHub: open the SAME repository you used before (keep the same web address).
+   "Add file" -> "Upload files" -> drag in ALL 9 files from this zip:
+     index.html  manifest.webmanifest  sw.js  icon.svg  icon-180.png  icon-192.png
+     icon-512.png  icon-512-maskable.png  favicon-32.png
+   GitHub asks to replace the old files -> yes. Click "Commit changes".
+   Wait 1-2 minutes for GitHub Pages to publish.
+
+3. On each phone: open the app once while online, wait 10 s, close it fully, open it again.
+   You now have GonioLens. Readings saved by the old version are kept (same address).
+
+4. New name and icon on the home screen:
+   - Android: Chrome updates the icon and name by itself within about a day.
+     To get it at once: Back up first (Records -> Back up), then long-press the
+     icon -> Uninstall, open the address in Chrome -> menu -> Install app.
+   - iPhone: the home-screen icon only changes if you remove it and add it again.
+     REMOVING IT DELETES ITS SAVED READINGS on iPhone, so tap Records -> Back up
+     first, then Share -> Add to Home Screen, then Records -> Restore backup.
+
+5. Android APK (optional): pwabuilder.com -> paste your GitHub Pages address ->
+   Package for stores -> Android -> Download. Install the .apk from the zip.
+
+Updating later: change files, then change VERSION in sw.js (e.g. goniolens-1.1).
